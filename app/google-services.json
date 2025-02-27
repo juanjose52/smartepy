@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "275693359255",
+    "project_id": "ritmo-cardiaco-5c655",
+    "storage_bucket": "ritmo-cardiaco-5c655.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:275693359255:android:1b2db78fcb8be925cdd9d2",
+        "android_client_info": {
+          "package_name": "com.example.supuestopitidoalpasar100latidosporsegundo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_Vfvv1WAtBURY37cIkW9WbLxETQ2UpQ0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:275693359255:android:0469bb5fdfa4017bcdd9d2",
+        "android_client_info": {
+          "package_name": "com.example.supuestopitidoalpasar100latidosporsegundo1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_Vfvv1WAtBURY37cIkW9WbLxETQ2UpQ0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
