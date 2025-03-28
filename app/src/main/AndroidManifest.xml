@@ -5,6 +5,17 @@
 
     <uses-permission android:name="android.permission.BODY_SENSORS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH"/>
+    <uses-permission android:name="android.permission.BODY_SENSORS"/>
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS"/>
+    <uses-feature android:name="android.hardware.type.watch" />
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+
+
+
+
 
     <uses-feature
         android:name="android.hardware.sensor.heart_rate"
@@ -20,19 +31,26 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Supuestopitidoalpasar100latidosporsegundo"
         tools:targetApi="31">
-        <activity
-            android:name="com.example.sensores.sensores"
-            android:exported="false"
-            android:theme="@style/Theme.Supuestopitidoalpasar100latidosporsegundo" />
+
+        <meta-data
+            android:name="com.google.android.wearable.standalone"
+            android:value="true" />
+
+        <!-- Registro del servicio -->
+        <service
+            android:name=".HeartRateService"
+            android:foregroundServiceType="health"
+            android:exported="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
     </application>
 
 </manifest>
