@@ -23,7 +23,8 @@ import androidx.work.WorkManager;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import android.os.Build;
-import android.content.SharedPreferences;
+import android.view.WindowManager;
+
 
 public class MainActivity extends Activity {
 
@@ -37,15 +38,11 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         SharedPreferences prefs = getSharedPreferences("device_prefs", MODE_PRIVATE);
-        if (!prefs.contains("device_id")) {
-            String deviceId = UUID.randomUUID().toString();
-            prefs.edit().putString("device_id", deviceId).apply();
-            Log.d("MainActivity", "Nuevo deviceId generado: " + deviceId);
-        } else {
-            String deviceId = prefs.getString("device_id", "unknown_device");
-            Log.d("MainActivity", "deviceId existente: " + deviceId);
-        }
+        String deviceId = prefs.getString("device_id", "unknown_device");
+        Log.d("MainActivity", "deviceId: " + deviceId);
 
         FirebaseApp.initializeApp(this);
 

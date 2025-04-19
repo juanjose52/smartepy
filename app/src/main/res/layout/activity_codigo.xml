@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="16dp">
+
+    <!-- Este TextView muestra la cédula que vino de la pantalla anterior -->
+    <TextView
+        android:id="@+id/cedulaValue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Cédula aquí"
+        android:textSize="18sp"
+        android:textStyle="bold"/>
+
+    <!-- Campo para el código de 3 dígitos -->
+    <EditText
+        android:id="@+id/codigoInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Código de 3 dígitos"
+        android:inputType="number"
+        android:maxLength="3"
+        android:layout_marginTop="20dp"/>
+
+    <!-- Botones “Regresar” y “Continuar” -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="24dp">
+
+        <Button
+            android:id="@+id/backButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Regresar"/>
+
+        <Space
+            android:layout_width="32dp"
+            android:layout_height="wrap_content"/>
+
+        <Button
+            android:id="@+id/codigoContinue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Continuar"/>
+    </LinearLayout>
+</LinearLayout>

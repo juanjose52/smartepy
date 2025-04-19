@@ -54,6 +54,8 @@ public class HeartRateService extends Service implements SensorEventListener {
     private PowerManager.WakeLock wakeLock;
 
     private String deviceId;
+    private int userAge = -1;
+    private int frecuenciaUmbral = 80;
 
 
     @Override
@@ -63,6 +65,27 @@ public class HeartRateService extends Service implements SensorEventListener {
 
         SharedPreferences prefs = getSharedPreferences("device_prefs", MODE_PRIVATE);
         deviceId = prefs.getString("device_id", "unknown_device");
+        userAge = prefs.getInt("user_age", -1);
+
+// Establecer el umbral dinámico según la edad
+        if (userAge >= 1 && userAge <= 3) {
+            frecuenciaUmbral = 150;
+        } else if (userAge >= 4 && userAge <= 5) {
+            frecuenciaUmbral = 140;
+        } else if (userAge >= 6 && userAge <= 12) {
+            frecuenciaUmbral = 130;
+        } else if (userAge >= 13 && userAge <= 18) {
+            frecuenciaUmbral = 120;
+        } else if (userAge > 18 && userAge <= 60) {
+            frecuenciaUmbral = 150;
+        } else if (userAge > 60) {
+            frecuenciaUmbral = 90;
+        } else {
+            frecuenciaUmbral = 80; // caso desconocido
+        }
+
+        Log.d("HeartRateService", "Edad: " + userAge + " → Umbral: " + frecuenciaUmbral + " BPM");
+
         Log.d("HeartRateService", "Usando deviceId: " + deviceId);
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
@@ -99,7 +122,7 @@ public class HeartRateService extends Service implements SensorEventListener {
         }
         if (accelerometer != null) {
             sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
-        }
+            }
     }
 
     private void triggerAlert() {
@@ -207,7 +230,7 @@ public class HeartRateService extends Service implements SensorEventListener {
                 sendSensorData(heartRate, accelX, accelY, accelZ);
 
                 // Calcular promedio cada 50 lecturas
-                if (heartRateQueue.size() >= 30) {
+                if (heartRateQueue.size() >= 25) {
                     int sum = 0;
                     for (int hr : heartRateQueue) {
                         sum += hr;
@@ -215,15 +238,15 @@ public class HeartRateService extends Service implements SensorEventListener {
                     int averageHeartRate = sum / heartRateQueue.size();
                     long blockEndTime = currentTime;
 
-                    Log.d("HeartRateService", "✅ Se alcanzaron 50 lecturas. Promedio: " + averageHeartRate);
+                    Log.d("HeartRateService", "✅ Se alcanzaron 20 lecturas. Promedio: " + averageHeartRate);
                     Log.d("HeartRateService", "📤 Guardando en Firestore...");
 
                     saveAnalysisResult(averageHeartRate, blockStartTime, blockEndTime, heartRateQueue.size());
                     heartRateQueue.clear();
                 }
 
-                if (heartRate > 80) {
-                    Log.d("HeartRateService", "🚨 Frecuencia mayor a 80 BPM, activando alerta...");
+                if (heartRate > frecuenciaUmbral) {
+                    Log.d("HeartRateService", "🚨 Frecuencia mayor a " + frecuenciaUmbral + " BPM, activando alerta...");
                     triggerAlert();
                 }
             }

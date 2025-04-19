@@ -20,6 +20,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Supuestopitidoalpasar100latidosporsegundo"
+rootProject.name = "SmartEpy"
 include(":app")
  
