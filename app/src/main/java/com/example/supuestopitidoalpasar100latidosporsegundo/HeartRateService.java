@@ -32,11 +32,16 @@ import com.google.firebase.Timestamp;
 import android.os.PowerManager;
 import android.net.Uri;
 import android.provider.Settings;
-
-
-
+import org.tensorflow.lite.Interpreter;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.io.FileInputStream;
+import java.io.IOException;
+import android.content.res.AssetFileDescriptor;
 
 public class HeartRateService extends Service implements SensorEventListener {
+
+    private Interpreter tflite;  // TensorFlow Lite model interpreter
 
     private SensorManager sensorManager;
     private Sensor heartRateSensor;
@@ -48,43 +53,25 @@ public class HeartRateService extends Service implements SensorEventListener {
     private boolean isBeeping = false;
 
     private long lastSaveTime = 0;
-    private static final long MIN_INTERVAL = 10 * 1000; // 10 segundos
+    private static final long MIN_INTERVAL = 10 * 1000; // 10 seconds
     private long blockStartTime = 0;
 
     private PowerManager.WakeLock wakeLock;
 
     private String deviceId;
     private int userAge = -1;
-    private int frecuenciaUmbral = 80;
-
 
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d("HeartRateService", "Servicio iniciado");
 
+        // Cargar el modelo
+        loadModel();
+
         SharedPreferences prefs = getSharedPreferences("device_prefs", MODE_PRIVATE);
         deviceId = prefs.getString("device_id", "unknown_device");
         userAge = prefs.getInt("user_age", -1);
-
-// Establecer el umbral dinámico según la edad
-        if (userAge >= 1 && userAge <= 3) {
-            frecuenciaUmbral = 150;
-        } else if (userAge >= 4 && userAge <= 5) {
-            frecuenciaUmbral = 140;
-        } else if (userAge >= 6 && userAge <= 12) {
-            frecuenciaUmbral = 130;
-        } else if (userAge >= 13 && userAge <= 18) {
-            frecuenciaUmbral = 120;
-        } else if (userAge > 18 && userAge <= 60) {
-            frecuenciaUmbral = 150;
-        } else if (userAge > 60) {
-            frecuenciaUmbral = 90;
-        } else {
-            frecuenciaUmbral = 80; // caso desconocido
-        }
-
-        Log.d("HeartRateService", "Edad: " + userAge + " → Umbral: " + frecuenciaUmbral + " BPM");
 
         Log.d("HeartRateService", "Usando deviceId: " + deviceId);
 
@@ -98,6 +85,33 @@ public class HeartRateService extends Service implements SensorEventListener {
         startMonitoring();
     }
 
+    private void loadModel() {
+        try {
+            // Cargar el modelo TFLite desde los assets
+            AssetFileDescriptor fileDescriptor = getAssets().openFd("modelo_predictivo.tflite");
+            FileInputStream inputStream = fileDescriptor.createInputStream();
+            FileChannel fileChannel = inputStream.getChannel();
+            MappedByteBuffer modelBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, fileDescriptor.getStartOffset(), fileDescriptor.getDeclaredLength());
+
+            // Crear el intérprete de TensorFlow Lite
+            tflite = new Interpreter(modelBuffer);
+            Log.d("HeartRateService", "Modelo TFLite cargado con éxito.");
+        } catch (IOException e) {
+            Log.e("HeartRateService", "Error al cargar el modelo TFLite", e);
+        }
+    }
+
+    private void makePrediction(float[] input) {
+        float[][] output = new float[1][1];  // Salida del modelo
+
+        // Ejecutar la predicción con el modelo
+        tflite.run(input, output);
+
+        // Si la salida es mayor que 0.5, activa la alerta (ajusta el umbral según el modelo)
+        if (output[0][0] > 0.5) {  // Umbral ajustable dependiendo de la salida del modelo
+            triggerAlert();
+        }
+    }
 
     private Notification createNotification() {
         String channelId = "HeartRateServiceChannel";
@@ -122,7 +136,7 @@ public class HeartRateService extends Service implements SensorEventListener {
         }
         if (accelerometer != null) {
             sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
-            }
+        }
     }
 
     private void triggerAlert() {
@@ -130,9 +144,12 @@ public class HeartRateService extends Service implements SensorEventListener {
             isBeeping = true;
             Log.d("HeartRateService", "¡ALERTA! Ritmo cardíaco elevado");
 
+            // Sonido de alerta
             if (mediaPlayer != null) {
                 mediaPlayer.start();
             }
+
+            // Vibración
             if (vibrator != null && vibrator.hasVibrator()) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE));
@@ -140,12 +157,12 @@ public class HeartRateService extends Service implements SensorEventListener {
                     vibrator.vibrate(500);
                 }
             }
+
             new Handler().postDelayed(() -> isBeeping = false, 2000);
         }
     }
 
     private void sendSensorData(int heartRate, float accelX, float accelY, float accelZ) {
-
         if (heartRate == 0) return;
         long timestamp = System.currentTimeMillis();
 
@@ -161,47 +178,15 @@ public class HeartRateService extends Service implements SensorEventListener {
         accelerometerData.put("z", accelZ);
         data.put("accelerometer", accelerometerData);
 
-        // Agregar timestamps en 3 formatos
-        data.put("timestamp", timestamp);
         data.put("timestamp_readable", formatTimestamp(timestamp));
-        data.put("timestamp_ts", new Timestamp(new Date(timestamp)));
 
         db.collection("usuarios")
-                .document(deviceId)
+                .document(deviceId)  // Usar deviceId aquí
                 .collection("sensor_data")
                 .add(data)
                 .addOnSuccessListener(docRef -> Log.d("HeartRateService", "Datos guardados con ID: " + docRef.getId()))
                 .addOnFailureListener(e -> Log.e("HeartRateService", "Error al guardar en sensor_data", e));
     }
-
-
-    private void saveAnalysisResult(int averageHeartRate, long startTime, long endTime, int sampleSize) {
-        Log.d("HeartRateService", "Guardando promedio con contexto: " + averageHeartRate);
-
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        Map<String, Object> analysisData = new HashMap<>();
-        analysisData.put("average_heart_rate", averageHeartRate);
-        analysisData.put("start_time", startTime);
-        analysisData.put("end_time", endTime);
-        analysisData.put("start_time_readable", formatTimestamp(startTime));
-        analysisData.put("end_time_readable", formatTimestamp(endTime));
-        analysisData.put("start_time_ts", new Timestamp(new Date(startTime)));
-        analysisData.put("end_time_ts", new Timestamp(new Date(endTime)));
-        analysisData.put("sample_size", sampleSize);
-
-        long now = System.currentTimeMillis();
-        analysisData.put("timestamp", now);
-        analysisData.put("timestamp_readable", formatTimestamp(now));
-        analysisData.put("timestamp_ts", new Timestamp(new Date(now)));
-
-        db.collection("usuarios")
-                .document(deviceId)
-                .collection("heart_rate_analysis")
-                .add(analysisData)
-                .addOnSuccessListener(docRef -> Log.d("HeartRateService", "Promedio guardado con ID: " + docRef.getId()))
-                .addOnFailureListener(e -> Log.e("HeartRateService", "Error al guardar el promedio", e));
-    }
-
 
     private String formatTimestamp(long timestamp) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
@@ -219,36 +204,11 @@ public class HeartRateService extends Service implements SensorEventListener {
             if (currentTime - lastSaveTime >= MIN_INTERVAL) {
                 lastSaveTime = currentTime;
 
-                if (heartRateQueue.isEmpty()) {
-                    blockStartTime = currentTime;
-                    Log.d("HeartRateService", "🕓 Nuevo bloque iniciado en: " + blockStartTime);
-                }
+                // Convertir los datos al formato que el modelo necesita
+                float[] input = { (float) heartRate, accelX, accelY, accelZ }; // ejemplo de usar acelerómetro también
 
-                heartRateQueue.add(heartRate);
-                Log.d("HeartRateService", "📥 Lectura agregada. Total acumuladas: " + heartRateQueue.size());
-
-                sendSensorData(heartRate, accelX, accelY, accelZ);
-
-                // Calcular promedio cada 50 lecturas
-                if (heartRateQueue.size() >= 25) {
-                    int sum = 0;
-                    for (int hr : heartRateQueue) {
-                        sum += hr;
-                    }
-                    int averageHeartRate = sum / heartRateQueue.size();
-                    long blockEndTime = currentTime;
-
-                    Log.d("HeartRateService", "✅ Se alcanzaron 20 lecturas. Promedio: " + averageHeartRate);
-                    Log.d("HeartRateService", "📤 Guardando en Firestore...");
-
-                    saveAnalysisResult(averageHeartRate, blockStartTime, blockEndTime, heartRateQueue.size());
-                    heartRateQueue.clear();
-                }
-
-                if (heartRate > frecuenciaUmbral) {
-                    Log.d("HeartRateService", "🚨 Frecuencia mayor a " + frecuenciaUmbral + " BPM, activando alerta...");
-                    triggerAlert();
-                }
+                // Realizar la predicción con el modelo
+                makePrediction(input);
             }
         } else if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             accelX = event.values[0];
@@ -256,7 +216,6 @@ public class HeartRateService extends Service implements SensorEventListener {
             accelZ = event.values[2];
         }
     }
-
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {}
@@ -273,8 +232,6 @@ public class HeartRateService extends Service implements SensorEventListener {
         return START_STICKY;
     }
 
-
-
     @Override
     public void onDestroy() {
         super.onDestroy();
@@ -284,7 +241,6 @@ public class HeartRateService extends Service implements SensorEventListener {
             wakeLock.release();
             Log.d("HeartRateService", "🔓 WakeLock liberado.");
         }
-
     }
 
     @Nullable

@@ -27,22 +27,32 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     buildFeatures {
         viewBinding = true
     }
+
     kotlinOptions {
         jvmTarget = "11"
+    }
+
+    sourceSets {
+        getByName("main").assets.srcDirs("src/main/assets") // Confirmar que los archivos en assets sean empaquetados
     }
 }
 
 dependencies {
-    implementation(platform("com.google.firebase:firebase-bom:33.9.0"))
+    // Dependencias de Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.13.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-firestore")
+
+    // Otras dependencias comunes
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
@@ -50,9 +60,17 @@ dependencies {
     implementation(libs.navigation.fragment)
     implementation(libs.navigation.ui)
     implementation(libs.core.ktx)
+
+    // Dependencias de TensorFlow Lite
+    implementation(libs.tensorflow.lite) // Para cargar el modelo
+    implementation(libs.tensorflow.lite.support) // Utilidades adicionales
+    implementation(libs.tensorflow.lite.gpu) // Opcional si utilizas la aceleración por GPU
+
+    // Dependencias de prueba
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
-    implementation("androidx.work:work-runtime:2.7.1")
 
+    // Dependencia de WorkManager
+    implementation(libs.work.runtime)
 }

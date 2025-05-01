@@ -25,7 +25,6 @@ import java.util.concurrent.TimeUnit;
 import android.os.Build;
 import android.view.WindowManager;
 
-
 public class MainActivity extends Activity {
 
     private TextView heartRateText;

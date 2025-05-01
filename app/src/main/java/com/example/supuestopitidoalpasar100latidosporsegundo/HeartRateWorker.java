@@ -68,11 +68,11 @@ public class HeartRateWorker extends Worker {
                 })
                 .addOnFailureListener(e -> Log.e("HeartRateWorker", "Error al obtener los datos", e));
     }
+
     private String formatTimestamp(long timestamp) {
         java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault());
         return sdf.format(new java.util.Date(timestamp));
     }
-
 
     private void saveExtendedAnalysis(double average, long min, long max, double stdDev) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
@@ -82,11 +82,6 @@ public class HeartRateWorker extends Worker {
         data.put("avg_heart_rate", average);
         data.put("min_heart_rate", min);
         data.put("max_heart_rate", max);
-        data.put("std_dev", stdDev);
-        data.put("sample_size", 200);
-        data.put("timestamp", timestamp);
         data.put("timestamp_readable", formatTimestamp(timestamp));
-        data.put("timestamp_ts", new com.google.firebase.Timestamp(new java.util.Date(timestamp)));
     }
-
 }
