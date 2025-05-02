@@ -12,8 +12,7 @@ buildscript {
     }
     dependencies {
         // Esto está bien, ya que son dependencias necesarias para configurar el Gradle
-        classpath("com.android.tools.build:gradle:8.9.2")
+        classpath("com.android.tools.build:gradle:8.7.3")
         classpath("com.google.gms:google-services:4.4.2")
     }
 }
-

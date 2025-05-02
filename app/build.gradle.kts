@@ -62,9 +62,14 @@ dependencies {
     implementation(libs.core.ktx)
 
     // Dependencias de TensorFlow Lite
-    implementation(libs.tensorflow.lite) // Para cargar el modelo
-    implementation(libs.tensorflow.lite.support) // Utilidades adicionales
-    implementation(libs.tensorflow.lite.gpu) // Opcional si utilizas la aceleración por GPU
+    implementation("org.tensorflow:tensorflow-lite:2.5.0") {
+        exclude(group = "com.google.ai.edge.litert", module = "litert-api")}
+    implementation ("org.tensorflow:tensorflow-lite-select-tf-ops:2.5.0"){
+        exclude(group = "com.google.ai.edge.litert", module = "litert-api")
+    }
+
+
+
 
     // Dependencias de prueba
     testImplementation(libs.junit)
