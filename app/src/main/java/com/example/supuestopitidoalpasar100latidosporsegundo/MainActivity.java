@@ -110,7 +110,9 @@ public class MainActivity extends Activity {
     }
 
     private void startMonitoring() {
-        startService(new Intent(this, HeartRateService.class));
+        Intent svc = new Intent(this, HeartRateService.class);
+        svc.putExtra("test_mode", true);    // true = simulación, false = datos reales
+        startService(svc);
         isMonitoring = true;
         startButton.setText("Detener");
     }
