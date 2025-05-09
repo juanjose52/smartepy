@@ -217,7 +217,7 @@ public class HeartRateService extends Service implements SensorEventListener {
     }
 
     private void loadModel() {
-        try (AssetFileDescriptor fd = getAssets().openFd("modelo_epilepsia_corregido1.tflite");
+        try (AssetFileDescriptor fd = getAssets().openFd("modelo_epilepsia_corregido_5.tflite");
              FileInputStream is = fd.createInputStream()
         ) {
             FileChannel channel = is.getChannel();
@@ -234,19 +234,29 @@ public class HeartRateService extends Service implements SensorEventListener {
     }
 
     /** Empaqueta tus 4 features en un tensor [1][1][4] y ejecuta la inferencia */
+    /** Empaqueta tus 5 features en un tensor [1][1][5] y ejecuta la inferencia */
     private void makePrediction(int heartRate, float ax, float ay, float az) {
-        // Asegúrate de que la entrada esté en la forma [1, 1, 4]
-        float[][][] input = new float[1][1][4];
-        input[0][0][0] = heartRate;
-        input[0][0][1] = ax;
-        input[0][0][2] = ay;
-        input[0][0][3] = az;
+        // 1) Calcula mean y count (aquí como prueba usamos el valor instantáneo y count=1)
+        float hrMean  = heartRate;
+        float hrCount = 1f;
+        float axMean  = ax;
+        float ayMean  = ay;
+        float azMean  = az;
 
+        // 2) Crea la entrada con shape [1,1,5]
+        float[][][] input = new float[1][1][5];
+        input[0][0][0] = hrMean;   // feature 0
+        input[0][0][1] = hrCount;  // feature 1
+        input[0][0][2] = axMean;   // feature 2
+        input[0][0][3] = ayMean;   // feature 3
+        input[0][0][4] = azMean;   // feature 4
 
+        // 3) Ejecuta la inferencia
         float[][] output = new float[1][1];
         tflite.run(input, output);
 
-        if (output[0][0] > 0.5f) {
+        // 4) Umbral calibrado (por ejemplo 0.433)
+        if (output[0][0] > 0.433f) {
             triggerAlert();
         }
     }
