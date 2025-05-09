@@ -33,9 +33,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TimeZone;
+
 import android.content.res.AssetFileDescriptor;
 import android.os.VibrationEffect;
 import org.tensorflow.lite.Interpreter;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FieldValue;
 
 public class HeartRateService extends Service implements SensorEventListener {
 
@@ -165,7 +169,7 @@ public class HeartRateService extends Service implements SensorEventListener {
             }
         }
     };
-
+    private FirebaseFirestore db;
     private Interpreter tflite;
     private SensorManager sensorManager;
     private Sensor heartRateSensor, accelerometer;
@@ -182,6 +186,9 @@ public class HeartRateService extends Service implements SensorEventListener {
     @Override
     public void onCreate() {
         super.onCreate();
+        db = FirebaseFirestore.getInstance();
+        vibrator    = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        mediaPlayer = MediaPlayer.create(this, R.raw.beep_sound);
         Log.d("HeartRateService", "Servicio iniciado");
 
         loadModel();
@@ -285,13 +292,42 @@ public class HeartRateService extends Service implements SensorEventListener {
         if (isBeeping) return;
         isBeeping = true;
         mediaPlayer.start();
-        if (vibrator.hasVibrator()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE));
-            else
-                vibrator.vibrate(500);
-        }
+        // vibración…
         new Handler().postDelayed(() -> isBeeping = false, 2000);
+
+        // 1) Referencia al documento de usuario en “usuarios/{deviceId}”
+        //    (no a “usuariosPorCedula”)
+        DocumentReference profileRef = db
+                .collection("usuarios")
+                .document(deviceId);
+
+        profileRef.get().addOnSuccessListener(doc -> {
+            // 2) Extrae el Map “info” y de ahí el nombre
+            String nombre = "desconocido";
+            if (doc.exists() && doc.contains("info")) {
+                @SuppressWarnings("unchecked")
+                Map<String,Object> info = (Map<String,Object>)doc.get("info");
+                if (info.get("nombre") != null) {
+                    nombre = info.get("nombre").toString();
+                }
+            }
+
+            // 3) Prepara la alerta
+            Map<String,Object> alerta = new HashMap<>();
+            alerta.put("userId", nombre);
+            // Guarda timestamp como número de ms, no como objeto Timestamp
+            alerta.put("timestamp", System.currentTimeMillis());
+
+            // 4) Escribe en “alerts/{autoId}”
+            db.collection("alerts")
+                    .add(alerta)
+                    .addOnSuccessListener(ref ->
+                            Log.d("HRService", "Alerta registrada con ID " + ref.getId()))
+                    .addOnFailureListener(e ->
+                            Log.e("HRService", "Error guardando alerta", e));
+
+        }).addOnFailureListener(e ->
+                Log.e("HRService", "No pude leer datos del usuario", e));
     }
 
     @Override
@@ -318,9 +354,17 @@ public class HeartRateService extends Service implements SensorEventListener {
         Map<String,Object> d = new HashMap<>();
         d.put("heart_rate", hr);
         Map<String,Float> acc = new HashMap<>();
-        acc.put("x", x); acc.put("y", y); acc.put("z", z);
+        acc.put("x", x);
+        acc.put("y", y);
+        acc.put("z", z);
         d.put("accelerometer", acc);
-        d.put("timestamp_readable", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date()));
+
+        // Formateador fijado a la zona horaria de Bogotá
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+        sdf.setTimeZone(TimeZone.getTimeZone("America/Bogota"));
+        String fechaColombia = sdf.format(new Date());
+        d.put("timestamp_readable", fechaColombia);
+
         FirebaseFirestore.getInstance()
                 .collection("usuarios")
                 .document(deviceId)
